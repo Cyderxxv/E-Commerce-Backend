@@ -2,66 +2,64 @@ package services
 
 import (
 	"errors"
+	"literally-backend/configs"
 	"literally-backend/internal/models"
-	"time"
-)
 
-// In-memory storage for demo purposes
-// In production, you would use a database like PostgreSQL, MySQL, etc.
-var users []models.User
-var userIDCounter uint = 1
+	"gorm.io/gorm"
+)
 
 // GetAllUsers returns all users
 func GetAllUsers() []models.User {
+	var users []models.User
+	configs.DB.Find(&users)
 	return users
 }
 
 // GetUserByID returns a user by ID
 func GetUserByID(id uint) (models.User, bool) {
-	for _, user := range users {
-		if user.ID == id {
-			return user, true
-		}
+	var user models.User
+	result := configs.DB.First(&user, id)
+	if result.Error != nil {
+		return models.User{}, false
 	}
-	return models.User{}, false
+	return user, true
 }
 
 // GetUserByEmail returns a user by email
 func GetUserByEmail(email string) (models.User, bool) {
-	for _, user := range users {
-		if user.Email == email {
-			return user, true
-		}
+	var user models.User
+	result := configs.DB.Where("email = ?", email).First(&user)
+	if result.Error != nil {
+		return models.User{}, false
 	}
-	return models.User{}, false
+	return user, true
 }
 
 // CreateUser creates a new user
 func CreateUser(req models.CreateUserRequest) (models.User, error) {
 	// Check if email already exists
-	for _, user := range users {
-		if user.Email == req.Email {
-			return models.User{}, errors.New("email already exists")
-		}
-		if user.PhoneNumber == req.PhoneNumber {
-			return models.User{}, errors.New("phone number already exists")
-		}
+	var existingUser models.User
+	if err := configs.DB.Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
+		return models.User{}, errors.New("email already exists")
+	}
+
+	// Check if phone number already exists
+	if err := configs.DB.Where("phone_number = ?", req.PhoneNumber).First(&existingUser).Error; err == nil {
+		return models.User{}, errors.New("phone number already exists")
 	}
 
 	// Create new user
 	user := models.User{
-		ID:          userIDCounter,
 		Name:        req.Name,
 		Email:       req.Email,
 		PhoneNumber: req.PhoneNumber,
 		Password:    req.Password, // In production, hash the password
 		Status:      "ACTIVE",
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
 	}
 
-	users = append(users, user)
-	userIDCounter++
+	if err := configs.DB.Create(&user).Error; err != nil {
+		return models.User{}, err
+	}
 
 	return user, nil
 }
@@ -69,103 +67,128 @@ func CreateUser(req models.CreateUserRequest) (models.User, error) {
 // RegisterUser registers a new user
 func RegisterUser(req models.RegisterRequest) (models.User, error) {
 	// Check if email already exists
-	for _, user := range users {
-		if user.Email == req.Email {
-			return models.User{}, errors.New("email already exists")
-		}
-		if user.PhoneNumber == req.PhoneNumber {
-			return models.User{}, errors.New("phone number already exists")
-		}
+	var existingUser models.User
+	if err := configs.DB.Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
+		return models.User{}, errors.New("email already exists")
+	}
+
+	// Check if phone number already exists
+	if err := configs.DB.Where("phone_number = ?", req.PhoneNumber).First(&existingUser).Error; err == nil {
+		return models.User{}, errors.New("phone number already exists")
 	}
 
 	// Create new user
 	user := models.User{
-		ID:          userIDCounter,
 		Name:        req.Name,
 		Email:       req.Email,
 		PhoneNumber: req.PhoneNumber,
 		Password:    req.Password, // In production, hash the password
 		Status:      "ACTIVE",
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
 	}
 
-	users = append(users, user)
-	userIDCounter++
+	if err := configs.DB.Create(&user).Error; err != nil {
+		return models.User{}, err
+	}
 
 	return user, nil
 }
 
 // LoginUser authenticates a user
 func LoginUser(req models.LoginRequest) (models.User, error) {
-	for _, user := range users {
-		if user.Email == req.Email && user.Password == req.Password {
-			if user.Status != "ACTIVE" {
-				return models.User{}, errors.New("account is not active")
-			}
-			return user, nil
+	var user models.User
+	result := configs.DB.Where("email = ? AND password = ?", req.Email, req.Password).First(&user)
+
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return models.User{}, errors.New("invalid email or password")
 		}
+		return models.User{}, result.Error
 	}
-	return models.User{}, errors.New("invalid email or password")
+
+	if user.Status != "ACTIVE" {
+		return models.User{}, errors.New("account is not active")
+	}
+
+	return user, nil
 }
 
 // UpdateUser updates an existing user
 func UpdateUser(id uint, req models.UpdateUserRequest) (models.User, error) {
-	for i, user := range users {
-		if user.ID == id {
-			// Update fields if provided
-			if req.Name != "" {
-				users[i].Name = req.Name
-			}
-			if req.Email != "" {
-				// Check if new email already exists (excluding current user)
-				for _, otherUser := range users {
-					if otherUser.Email == req.Email && otherUser.ID != id {
-						return models.User{}, errors.New("email already exists")
-					}
-				}
-				users[i].Email = req.Email
-			}
-			if req.PhoneNumber != "" {
-				// Check if new phone number already exists (excluding current user)
-				for _, otherUser := range users {
-					if otherUser.PhoneNumber == req.PhoneNumber && otherUser.ID != id {
-						return models.User{}, errors.New("phone number already exists")
-					}
-				}
-				users[i].PhoneNumber = req.PhoneNumber
-			}
-			if req.Photo != "" {
-				users[i].Photo = req.Photo
-			}
-			if req.FullName != "" {
-				users[i].FullName = req.FullName
-			}
-			if req.DateOfBirth != nil {
-				users[i].DateOfBirth = req.DateOfBirth
-			}
-			if req.Address != "" {
-				users[i].Address = req.Address
-			}
-			if req.Gender != "" {
-				users[i].Gender = req.Gender
-			}
-			users[i].UpdatedAt = time.Now()
+	var user models.User
 
-			return users[i], nil
+	// Find the user
+	if err := configs.DB.First(&user, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.User{}, errors.New("user not found")
+		}
+		return models.User{}, err
+	}
+
+	// Check if new email already exists (excluding current user)
+	if req.Email != "" && req.Email != user.Email {
+		var existingUser models.User
+		if err := configs.DB.Where("email = ? AND id != ?", req.Email, id).First(&existingUser).Error; err == nil {
+			return models.User{}, errors.New("email already exists")
 		}
 	}
-	return models.User{}, errors.New("user not found")
+
+	// Check if new phone number already exists (excluding current user)
+	if req.PhoneNumber != "" && req.PhoneNumber != user.PhoneNumber {
+		var existingUser models.User
+		if err := configs.DB.Where("phone_number = ? AND id != ?", req.PhoneNumber, id).First(&existingUser).Error; err == nil {
+			return models.User{}, errors.New("phone number already exists")
+		}
+	}
+
+	// Update fields
+	updates := make(map[string]interface{})
+
+	if req.Name != "" {
+		updates["name"] = req.Name
+	}
+	if req.Email != "" {
+		updates["email"] = req.Email
+	}
+	if req.PhoneNumber != "" {
+		updates["phone_number"] = req.PhoneNumber
+	}
+	if req.Photo != "" {
+		updates["photo"] = req.Photo
+	}
+	if req.FullName != "" {
+		updates["full_name"] = req.FullName
+	}
+	if req.DateOfBirth != nil {
+		updates["date_of_birth"] = req.DateOfBirth
+	}
+	if req.Address != "" {
+		updates["address"] = req.Address
+	}
+	if req.Gender != "" {
+		updates["gender"] = req.Gender
+	}
+
+	// Update the user
+	if err := configs.DB.Model(&user).Updates(updates).Error; err != nil {
+		return models.User{}, err
+	}
+
+	// Fetch the updated user
+	configs.DB.First(&user, id)
+
+	return user, nil
 }
 
 // DeleteUser deletes a user by ID
 func DeleteUser(id uint) error {
-	for i, user := range users {
-		if user.ID == id {
-			// Remove user from slice
-			users = append(users[:i], users[i+1:]...)
-			return nil
-		}
+	result := configs.DB.Delete(&models.User{}, id)
+	if result.Error != nil {
+		return result.Error
 	}
-	return errors.New("user not found")
+
+	if result.RowsAffected == 0 {
+		return errors.New("user not found")
+	}
+
+	return nil
 }

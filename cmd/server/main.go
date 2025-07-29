@@ -1,6 +1,7 @@
 package main
 
 import (
+	"literally-backend/configs"
 	"literally-backend/internal/handlers"
 	"literally-backend/internal/middleware"
 	"log"
@@ -15,6 +16,12 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found")
 	}
+
+	// Initialize database connection
+	configs.ConnectDatabase()
+
+	// Run migrations and seed data
+	configs.MigrateDatabase()
 
 	// Get port from environment or use default
 	port := os.Getenv("PORT")
