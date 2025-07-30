@@ -5,6 +5,7 @@ import (
 	"literally-backend/configs"
 	"literally-backend/internal/models"
 
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -77,13 +78,19 @@ func RegisterUser(req models.RegisterRequest) (models.User, error) {
 		return models.User{}, errors.New("phone number already exists")
 	}
 
+	// Hash password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return models.User{}, err
+	}
+
 	// Create new user
 	user := models.User{
-		Name:        req.Name,
-		Email:       req.Email,
-		PhoneNumber: req.PhoneNumber,
-		Password:    req.Password, // In production, hash the password
-		Status:      "ACTIVE",
+		Name:         req.Name,
+		Email:        req.Email,
+		PhoneNumber:  req.PhoneNumber,
+		PasswordHash: string(hashedPassword),
+		Status:       "ACTIVE",
 	}
 
 	if err := configs.DB.Create(&user).Error; err != nil {
@@ -96,13 +103,18 @@ func RegisterUser(req models.RegisterRequest) (models.User, error) {
 // LoginUser authenticates a user
 func LoginUser(req models.LoginRequest) (models.User, error) {
 	var user models.User
-	result := configs.DB.Where("email = ? AND password = ?", req.Email, req.Password).First(&user)
+	result := configs.DB.Where("email = ?", req.Email).First(&user)
 
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return models.User{}, errors.New("invalid email or password")
 		}
 		return models.User{}, result.Error
+	}
+
+	// Check password
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+		return models.User{}, errors.New("invalid email or password")
 	}
 
 	if user.Status != "ACTIVE" {

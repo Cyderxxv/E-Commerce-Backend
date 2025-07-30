@@ -4,19 +4,20 @@ import "time"
 
 // User represents a user in the system
 type User struct {
-	ID          uint       `json:"id" gorm:"primaryKey"`
-	Name        string     `json:"name" binding:"required"`
-	Email       string     `json:"email" binding:"required,email" gorm:"unique"`
-	PhoneNumber string     `json:"phone_number" binding:"required" gorm:"unique"`
-	Password    string     `json:"password,omitempty" binding:"required,min=6"`
-	Photo       string     `json:"photo,omitempty"`
-	FullName    string     `json:"full_name,omitempty"`
-	DateOfBirth *time.Time `json:"date_of_birth,omitempty"`
-	Address     string     `json:"address,omitempty"`
-	Gender      string     `json:"gender,omitempty"`
-	Status      string     `json:"status" gorm:"default:ACTIVE"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
+	ID           uint       `json:"id" gorm:"primaryKey"`
+	Name         string     `json:"name" binding:"required"`
+	Email        string     `json:"email" binding:"required,email" gorm:"unique"`
+	PhoneNumber  string     `json:"phone_number" binding:"required" gorm:"unique"`
+	Password     string     `json:"password,omitempty" binding:"required,min=6" gorm:"-"`
+	PasswordHash string     `json:"-" gorm:"column:password_hash;not null"`
+	Photo        string     `json:"photo,omitempty"`
+	FullName     string     `json:"full_name,omitempty"`
+	DateOfBirth  *time.Time `json:"date_of_birth,omitempty"`
+	Address      string     `json:"address,omitempty"`
+	Gender       string     `json:"gender,omitempty"`
+	Status       string     `json:"status" gorm:"default:ACTIVE"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
 }
 
 // UserResponse represents user data returned to client (without password)

@@ -3,6 +3,9 @@ package configs
 import (
 	"literally-backend/internal/models"
 	"log"
+	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 // MigrateDatabase tự động tạo tables từ models
@@ -24,6 +27,7 @@ func MigrateDatabase() {
 		&models.Review{},
 		&models.Notification{},
 		&models.Transaction{},
+		&models.PurchaseHistory{},
 	)
 
 	if err != nil {
@@ -40,6 +44,9 @@ func MigrateDatabase() {
 func seedDefaultData() {
 	log.Println("Seeding default data...")
 
+	// Seed users
+	seedUsers()
+
 	// Seed payment methods
 	seedPaymentMethods()
 
@@ -49,7 +56,160 @@ func seedDefaultData() {
 	// Seed sample products
 	seedSampleProducts()
 
+	// Seed purchase history
+	seedPurchaseHistory()
+
 	log.Println("Default data seeded successfully!")
+}
+
+// mustHashPassword hashes password and panics if error
+func mustHashPassword(password string) string {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		panic(err)
+	}
+	return string(hashedPassword)
+}
+
+// seedPurchaseHistory thêm sample purchase history
+func seedPurchaseHistory() {
+	var count int64
+	DB.Model(&models.PurchaseHistory{}).Count(&count)
+
+	if count == 0 {
+		// Sample purchase history records
+		purchaseHistories := []models.PurchaseHistory{
+			{
+				UserID:          1,
+				ProductID:       1,
+				ProductName:     "Samsung Galaxy S25 Edge (12/256GB)",
+				ProductImageURL: "https://cdn.viettablet.com/images/detailed/66/samsung-galaxy-s25-edge-111.jpg",
+				Quantity:        1,
+				UnitPrice:       25650600,
+				TotalPrice:      25650600,
+				OrderStatus:     "DELIVERED",
+				PaymentMethod:   "Cash",
+				IsInstallment:   false,
+				PurchaseDate:    time.Now().AddDate(0, 0, -15),
+				DeliveryDate:    &[]time.Time{time.Now().AddDate(0, 0, -10)}[0],
+				ShippingAddress: "Ho Chi Minh City, Vietnam",
+			},
+			{
+				UserID:            1,
+				ProductID:         6,
+				ProductName:       "Apple MacBook Air M4 13-inch (16/512GB)",
+				ProductImageURL:   "https://bizweb.dktcdn.net/100/453/356/products/mbair-13inch-m4-midnight-1744562440665.jpg?v=1747827209317",
+				Quantity:          1,
+				UnitPrice:         29990000,
+				TotalPrice:        29990000,
+				OrderStatus:       "PROCESSING",
+				PaymentMethod:     "Installment",
+				IsInstallment:     true,
+				InstallmentMonths: &[]int{12}[0],
+				MonthlyPayment:    &[]float64{2499167}[0],
+				PurchaseDate:      time.Now().AddDate(0, 0, -5),
+				ShippingAddress:   "Ho Chi Minh City, Vietnam",
+			},
+			{
+				UserID:          1,
+				ProductID:       2,
+				ProductName:     "Xiaomi 15S PRO (12/256GB)",
+				ProductImageURL: "https://cdn.mobilecity.vn/mobilecity-vn/images/2025/05/w300/xiaomi-15s-pro-den-cac-bon.jpg.webp",
+				Quantity:        1,
+				UnitPrice:       14550200,
+				TotalPrice:      14550200,
+				OrderStatus:     "DELIVERED",
+				PaymentMethod:   "Bank Transfer",
+				IsInstallment:   false,
+				PurchaseDate:    time.Now().AddDate(0, -1, -10),
+				DeliveryDate:    &[]time.Time{time.Now().AddDate(0, -1, -5)}[0],
+				ShippingAddress: "Ho Chi Minh City, Vietnam",
+			},
+			{
+				UserID:          1,
+				ProductID:       4,
+				ProductName:     "Samsung Galaxy Z Flip6 (12/256GB)",
+				ProductImageURL: "https://cdn2.cellphones.com.vn/insecure/rs:fill:0:358/q:90/plain/https://cellphones.com.vn/media/catalog/product/s/a/samsung-galaxy-z-flip-6-xanh-duong-4_2.png",
+				Quantity:        1,
+				UnitPrice:       20550200,
+				TotalPrice:      20550200,
+				OrderStatus:     "DELIVERED",
+				PaymentMethod:   "Cash",
+				IsInstallment:   false,
+				PurchaseDate:    time.Now().AddDate(0, -2, -20),
+				DeliveryDate:    &[]time.Time{time.Now().AddDate(0, -2, -15)}[0],
+				ShippingAddress: "Ho Chi Minh City, Vietnam",
+			},
+			{
+				UserID:          1,
+				ProductID:       8,
+				ProductName:     "Apple Watch Series 10 (46mm)",
+				ProductImageURL: "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/MXM23ref_FV99_VW_34FR+watch-case-46-aluminum-jetblack-nc-s10_VW_34FR+watch-face-46-aluminum-jetblack-s10_VW_34FR?wid=752&hei=720&bgc=fafafa&trim=1&fmt=p-jpg&qlt=80&.v=TnVrdDZWRlZzTURKbHFqOGh0dGpVRW5TeWJ6QW43NUFnQ2V4cmRFc1VnYUdWejZ5THhpKzJwRmRDYlhxN2o5aXB2QjR6TEZ4ZThxM3VqYkZobmlXM3RGNnlaeXQ4NGFKQTAzc0NGeHR2aVk0VEhOZEFKYmY1ZHNpalQ3YVhOWk9WV",
+				Quantity:        1,
+				UnitPrice:       9990000,
+				TotalPrice:      9990000,
+				OrderStatus:     "SHIPPED",
+				PaymentMethod:   "Credit Card",
+				IsInstallment:   false,
+				PurchaseDate:    time.Now().AddDate(0, 0, -3),
+				TrackingNumber:  "AWS123456789",
+				ShippingAddress: "Ho Chi Minh City, Vietnam",
+			},
+		}
+
+		for _, purchase := range purchaseHistories {
+			DB.Create(&purchase)
+		}
+		log.Println("Purchase history seeded")
+	}
+}
+
+func seedUsers() {
+	var count int64
+	DB.Model(&models.User{}).Count(&count)
+	if count > 0 {
+		return // Users already exist
+	}
+
+	users := []models.User{
+		{
+			Name:         "Test User",
+			Email:        "test@example.com",
+			PhoneNumber:  "+84123456789",
+			PasswordHash: mustHashPassword("123456"),
+			Photo:        "https://avatar.com/test.jpg",
+			FullName:     "Test User Full Name",
+			Address:      "123 Test Street, Test City",
+			Gender:       "Male",
+			Status:       "ACTIVE",
+		},
+		{
+			Name:         "John Doe",
+			Email:        "john@example.com",
+			PhoneNumber:  "+84987654321",
+			PasswordHash: mustHashPassword("123456"),
+			Photo:        "https://avatar.com/john.jpg",
+			FullName:     "John Michael Doe",
+			Address:      "456 Main Street, City",
+			Gender:       "Male",
+			Status:       "ACTIVE",
+		},
+		{
+			Name:         "Jane Smith",
+			Email:        "jane@example.com",
+			PhoneNumber:  "+84111222333",
+			PasswordHash: mustHashPassword("123456"),
+			Photo:        "https://avatar.com/jane.jpg",
+			FullName:     "Jane Elizabeth Smith",
+			Address:      "789 Oak Avenue, City",
+			Gender:       "Female",
+			Status:       "ACTIVE",
+		},
+	}
+
+	for _, user := range users {
+		DB.Create(&user)
+	}
 }
 
 // seedPaymentMethods thêm payment methods mặc định

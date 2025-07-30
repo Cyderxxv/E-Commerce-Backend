@@ -1,6 +1,6 @@
 # Literally Backend
 
-A modern Go backend API built with Gin framework.
+A modern Go e-commerce backend API built with Gin framework and PostgreSQL.
 
 ## Features
 
@@ -10,7 +10,12 @@ A modern Go backend API built with Gin framework.
 - 📝 Environment configuration
 - 🏗️ Clean architecture (handlers, services, models)
 - 📊 JSON responses
-- ⚡ In-memory storage (demo)
+- 🗄️ PostgreSQL database integration with GORM
+- 🔐 Password hashing with bcrypt
+- 🛒 Complete e-commerce functionality
+- 📋 Purchase history tracking system
+- 🔍 Advanced filtering and search capabilities
+- 📊 Statistics and analytics
 
 ## Project Structure
 
@@ -22,19 +27,30 @@ literally-backend/
 ├── internal/
 │   ├── handlers/            # HTTP handlers
 │   │   ├── user_handler.go
-│   │   └── product_handler.go
+│   │   ├── product_handler.go
+│   │   ├── category_handler.go
+│   │   ├── cart_handler.go
+│   │   └── purchase_history_handler.go
 │   ├── models/              # Data models
 │   │   ├── user.go
-│   │   └── product.go
+│   │   ├── product.go
+│   │   ├── category.go
+│   │   ├── cart.go
+│   │   └── purchase_history.go
 │   ├── services/            # Business logic
 │   │   ├── user_service.go
-│   │   └── product_service.go
+│   │   ├── product_service.go
+│   │   ├── category_service.go
+│   │   ├── cart_service.go
+│   │   └── purchase_history_service.go
 │   └── middleware/          # HTTP middleware
 │       └── middleware.go
+├── configs/                 # Configuration files
+│   ├── database.go         # Database connection
+│   └── migration.go        # Database migrations & seeding
 ├── pkg/
 │   └── utils/               # Utility functions
 │       └── utils.go
-├── configs/                 # Configuration files
 ├── .env.example            # Environment variables example
 ├── .env                    # Environment variables
 ├── go.mod                  # Go module file
@@ -55,17 +71,41 @@ cd literally-backend
 go mod download
 ```
 
-3. Copy environment variables:
+3. Set up PostgreSQL database:
+```bash
+# Create database
+createdb TestDB
+
+# Or using psql
+psql -U postgres
+CREATE DATABASE TestDB;
+\q
+```
+
+4. Copy environment variables:
 ```bash
 copy .env.example .env
 ```
 
-4. Run the application:
+5. Configure database connection in `.env`:
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=your_password
+DB_NAME=TestDB
+DB_SSLMODE=disable
+```
+
+6. Run the application:
 ```bash
 go run cmd/server/main.go
 ```
 
-The server will start on `http://localhost:8080`
+The server will start on `http://localhost:8080` and automatically:
+- Connect to PostgreSQL database
+- Run database migrations
+- Seed sample data
 
 ## API Endpoints
 
@@ -109,6 +149,25 @@ The server will start on `http://localhost:8080`
 - `PUT /api/v1/cart/:id?user_id=1` - Update cart item quantity
 - `DELETE /api/v1/cart/:id?user_id=1` - Remove item from cart
 - `DELETE /api/v1/cart?user_id=1` - Clear all cart items
+
+### Purchase History
+- `GET /api/v1/purchase-history?user_id=1` - Get user's purchase history with filtering
+- `GET /api/v1/purchase-history/stats?user_id=1` - Get purchase statistics
+- `GET /api/v1/purchase-history/recent?user_id=1&limit=5` - Get recent purchases
+- `GET /api/v1/purchase-history/search?user_id=1&q=Samsung` - Search purchase history
+- `GET /api/v1/purchase-history/date-range?user_id=1&start_date=2025-01-01&end_date=2025-12-31` - Get purchases by date range
+- `GET /api/v1/purchase-history/:id?user_id=1` - Get specific purchase details
+- `GET /api/v1/purchase-history/can-review/:product_id?user_id=1` - Check if user can review product
+
+#### Purchase History Filtering Options
+- `status` - Filter by order status (DELIVERED, PROCESSING, SHIPPED, CANCELLED)
+- `payment_method` - Filter by payment method (Cash, Credit Card, Bank Transfer, Installment)
+- `is_installment` - Filter installment purchases (true/false)
+- `start_date` - Filter from date (YYYY-MM-DD format)
+- `end_date` - Filter to date (YYYY-MM-DD format)
+- `product_name` - Filter by product name (partial match)
+- `page` - Page number for pagination (default: 1)
+- `limit` - Items per page (default: 10)
 
 ## Example API Usage
 
@@ -164,6 +223,128 @@ curl -X POST "http://localhost:8080/api/v1/cart?user_id=1" \
 curl "http://localhost:8080/api/v1/cart?user_id=1"
 ```
 
+### Get Purchase History
+```bash
+curl "http://localhost:8080/api/v1/purchase-history?user_id=1"
+```
+
+### Get Purchase History with Filters
+```bash
+# Filter by delivered orders only
+curl "http://localhost:8080/api/v1/purchase-history?user_id=1&status=DELIVERED"
+
+# Filter by installment purchases
+curl "http://localhost:8080/api/v1/purchase-history?user_id=1&is_installment=true"
+
+# Filter by date range
+curl "http://localhost:8080/api/v1/purchase-history?user_id=1&start_date=2025-07-01&end_date=2025-07-31"
+```
+
+### Get Purchase Statistics
+```bash
+curl "http://localhost:8080/api/v1/purchase-history/stats?user_id=1"
+```
+
+### Search Purchase History
+```bash
+curl "http://localhost:8080/api/v1/purchase-history/search?user_id=1&q=Samsung"
+```
+
+### Get Recent Purchases
+```bash
+curl "http://localhost:8080/api/v1/purchase-history/recent?user_id=1&limit=3"
+```
+
+## API Response Examples
+
+### Purchase History Response
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "product_id": 1,
+      "product_name": "Samsung Galaxy S25 Edge (12/256GB)",
+      "product_image_url": "https://cdn.example.com/samsung-s25.jpg",
+      "quantity": 1,
+      "unit_price": 25650600,
+      "total_price": 25650600,
+      "order_status": "DELIVERED",
+      "status_display": "Đã giao hàng",
+      "payment_method": "Cash",
+      "is_installment": false,
+      "purchase_date": "2025-07-15T16:54:45.549616+07:00",
+      "delivery_date": "2025-07-20T16:54:45.549616+07:00",
+      "shipping_address": "Ho Chi Minh City, Vietnam",
+      "days_since_purchase": 15,
+      "can_review": true,
+      "can_reorder": true
+    }
+  ],
+  "pagination": {
+    "current_page": 1,
+    "total_pages": 3,
+    "total_items": 25,
+    "per_page": 10
+  },
+  "message": "Purchase history retrieved successfully"
+}
+```
+
+### Purchase Statistics Response
+```json
+{
+  "data": {
+    "total_orders": 5,
+    "total_amount": 100731000,
+    "delivered_orders": 3,
+    "pending_orders": 1,
+    "cancelled_orders": 0,
+    "avg_order_value": 20146200
+  },
+  "message": "Purchase statistics retrieved successfully"
+}
+```
+
+## Error Handling
+
+The API returns consistent error responses in the following format:
+
+```json
+{
+  "error": "Error description message"
+}
+```
+
+### Common HTTP Status Codes
+- `200 OK` - Request successful
+- `400 Bad Request` - Invalid request parameters
+- `404 Not Found` - Resource not found
+- `500 Internal Server Error` - Server error
+
+### Example Error Responses
+
+#### Invalid User ID
+```json
+{
+  "error": "Invalid user ID"
+}
+```
+
+#### Search Term Required
+```json
+{
+  "error": "Search term is required"
+}
+```
+
+#### Database Error
+```json
+{
+  "error": "Failed to retrieve purchase history"
+}
+```
+
 ## Development
 
 ### Build
@@ -184,19 +365,74 @@ go test ./...
 ## Dependencies
 
 - [Gin](https://github.com/gin-gonic/gin) - HTTP web framework
+- [GORM](https://gorm.io/) - Object-relational mapping library for Go
+- [PostgreSQL Driver](https://github.com/lib/pq) - PostgreSQL driver for Go
+- [bcrypt](https://pkg.go.dev/golang.org/x/crypto/bcrypt) - Password hashing
 - [godotenv](https://github.com/joho/godotenv) - Environment variables loader
+
+## Database Schema
+
+The application uses PostgreSQL with the following main tables:
+
+### Users
+- User authentication and profile information
+- Password hashing with bcrypt
+- Profile fields: name, email, phone, address, etc.
+
+### Categories & Products
+- Product catalog with categories
+- Product details: name, description, price, stock, images
+- Category-based product organization
+
+### Shopping Cart
+- User shopping cart management
+- Cart items with quantities
+
+### Purchase History
+- Complete purchase tracking system
+- Order status management (PROCESSING, SHIPPED, DELIVERED, CANCELLED)
+- Payment method tracking (Cash, Credit Card, Bank Transfer, Installment)
+- Installment purchase support
+- Delivery tracking with tracking numbers
+- Business logic for reviews and reorders
+
+## Purchase History Features
+
+### Status Management
+- **PROCESSING**: Đang xử lý - Order is being processed
+- **SHIPPED**: Đang vận chuyển - Order has been shipped
+- **DELIVERED**: Đã giao hàng - Order delivered successfully
+- **CANCELLED**: Đã hủy - Order cancelled
+
+### Payment Methods
+- **Cash**: Tiền mặt
+- **Credit Card**: Thẻ tín dụng
+- **Bank Transfer**: Chuyển khoản ngân hàng
+- **Installment**: Trả góp
+
+### Business Logic
+- **Can Review**: Users can review products after delivery
+- **Can Reorder**: Users can reorder delivered or cancelled items
+- **Installment Tracking**: Monthly payment amounts and duration
+- **Days Since Purchase**: Automatic calculation of purchase age
 
 ## Future Enhancements
 
-- [ ] Database integration (PostgreSQL/MySQL)
-- [ ] Authentication & Authorization (JWT)
-- [ ] Input validation & sanitization
-- [ ] Logging improvements
-- [ ] Unit tests
+- [ ] Authentication & Authorization (JWT tokens)
+- [ ] Input validation & sanitization improvements
+- [ ] Enhanced logging and monitoring
+- [ ] Comprehensive unit tests
 - [ ] Docker support
 - [ ] API documentation (Swagger)
 - [ ] Rate limiting
-- [ ] Caching
+- [ ] Redis caching
+- [ ] Order management system
+- [ ] Payment gateway integration
+- [ ] Email notifications
+- [ ] File upload for product images
+- [ ] Admin dashboard APIs
+- [ ] Real-time notifications
+- [ ] Inventory management
 
 ## License
 

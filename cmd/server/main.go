@@ -106,6 +106,18 @@ func setupRoutes(router *gin.Engine) {
 			cart.DELETE("", handlers.ClearCart)          // DELETE /api/v1/cart?user_id=1
 		}
 
+		// Purchase History routes (requires authentication)
+		purchaseHistory := v1.Group("/purchase-history")
+		{
+			purchaseHistory.GET("", handlers.GetUserPurchaseHistory)                   // GET /api/v1/purchase-history?user_id=1&page=1&limit=10&status=DELIVERED
+			purchaseHistory.GET("/stats", handlers.GetUserPurchaseStats)               // GET /api/v1/purchase-history/stats?user_id=1
+			purchaseHistory.GET("/recent", handlers.GetRecentPurchases)                // GET /api/v1/purchase-history/recent?user_id=1&limit=5
+			purchaseHistory.GET("/search", handlers.SearchPurchaseHistory)             // GET /api/v1/purchase-history/search?user_id=1&q=samsung
+			purchaseHistory.GET("/date-range", handlers.GetPurchaseHistoryByDateRange) // GET /api/v1/purchase-history/date-range?user_id=1&start_date=2024-01-01&end_date=2024-12-31
+			purchaseHistory.GET("/:id", handlers.GetPurchaseHistoryByID)               // GET /api/v1/purchase-history/1?user_id=1
+			purchaseHistory.GET("/can-review/:product_id", handlers.CanReviewProduct)  // GET /api/v1/purchase-history/can-review/1?user_id=1
+		}
+
 		// Order routes (requires authentication)
 		// orders := v1.Group("/orders")
 		// {
