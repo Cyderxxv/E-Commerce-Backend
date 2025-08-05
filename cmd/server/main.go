@@ -58,19 +58,24 @@ func setupRoutes(router *gin.Engine) {
 	// API v1 routes
 	v1 := router.Group("/api/v1")
 	{
-		// Authentication routes
+		// Authentication routes (public)
 		auth := v1.Group("/auth")
 		{
 			auth.POST("/register", handlers.Register)
 			auth.POST("/login", handlers.Login)
 		}
 
-		// Profile routes (requires authentication in production)
-		v1.GET("/profile", handlers.GetProfile)
-		v1.PUT("/profile", handlers.UpdateProfile)
+		// Profile routes (requires authentication)
+		profile := v1.Group("/")
+		profile.Use(middleware.AuthMiddleware())
+		{
+			profile.GET("/profile", handlers.GetProfile)
+			profile.PUT("/profile", handlers.UpdateProfile)
+		}
 
-		// User routes (admin only in production)
+		// User routes (admin only - for now, require authentication)
 		users := v1.Group("/users")
+		users.Use(middleware.AuthMiddleware())
 		{
 			users.GET("", handlers.GetUsers)
 			users.GET("/:id", handlers.GetUserByID)
@@ -79,40 +84,47 @@ func setupRoutes(router *gin.Engine) {
 			users.DELETE("/:id", handlers.DeleteUser)
 		}
 
-		// Category routes
+		// Category routes (public)
 		v1.GET("/categories", handlers.GetCategories)
 		v1.GET("/categories/:id/products", handlers.GetProductsByCategory)
 
-		// Product routes
+		// Product routes (public for read, protected for write)
 		products := v1.Group("/products")
 		{
 			products.GET("", handlers.GetProducts)                  // GET /api/v1/products?category_id=1&featured=true&search=phone
 			products.GET("/featured", handlers.GetFeaturedProducts) // GET /api/v1/products/featured
 			products.GET("/search", handlers.SearchProducts)        // GET /api/v1/products/search?q=phone
 			products.GET("/:id", handlers.GetProductByID)
-			// Admin only routes
-			products.POST("", handlers.CreateProduct)
-			products.PUT("/:id", handlers.UpdateProduct)
-			products.DELETE("/:id", handlers.DeleteProduct)
+		}
+
+		// Admin product routes (requires authentication)
+		adminProducts := v1.Group("/products")
+		adminProducts.Use(middleware.AuthMiddleware())
+		{
+			adminProducts.POST("", handlers.CreateProduct)
+			adminProducts.PUT("/:id", handlers.UpdateProduct)
+			adminProducts.DELETE("/:id", handlers.DeleteProduct)
 		}
 
 		// Cart routes (requires authentication)
 		cart := v1.Group("/cart")
+		cart.Use(middleware.AuthMiddleware())
 		{
-			cart.GET("", handlers.GetCart)               // GET /api/v1/cart?user_id=1
-			cart.POST("", handlers.AddToCart)            // POST /api/v1/cart?user_id=1
-			cart.PUT("/:id", handlers.UpdateCartItem)    // PUT /api/v1/cart/1?user_id=1
-			cart.DELETE("/:id", handlers.RemoveFromCart) // DELETE /api/v1/cart/1?user_id=1
-			cart.DELETE("", handlers.ClearCart)          // DELETE /api/v1/cart?user_id=1
+			cart.GET("", handlers.GetCart)               // GET /api/v1/cart
+			cart.POST("", handlers.AddToCart)            // POST /api/v1/cart
+			cart.PUT("/:id", handlers.UpdateCartItem)    // PUT /api/v1/cart/1
+			cart.DELETE("/:id", handlers.RemoveFromCart) // DELETE /api/v1/cart/1
+			cart.DELETE("", handlers.ClearCart)          // DELETE /api/v1/cart
 		}
 
 		// Purchase History routes (requires authentication)
 		purchaseHistory := v1.Group("/purchase-history")
+		purchaseHistory.Use(middleware.AuthMiddleware())
 		{
-			purchaseHistory.GET("", handlers.GetUserPurchaseHistory)                   // GET /api/v1/purchase-history?user_id=1&page=1&limit=10&status=DELIVERED
-			purchaseHistory.GET("/stats", handlers.GetUserPurchaseStats)               // GET /api/v1/purchase-history/stats?user_id=1
-			purchaseHistory.GET("/recent", handlers.GetRecentPurchases)                // GET /api/v1/purchase-history/recent?user_id=1&limit=5
-			purchaseHistory.GET("/search", handlers.SearchPurchaseHistory)             // GET /api/v1/purchase-history/search?user_id=1&q=samsung
+			purchaseHistory.GET("", handlers.GetUserPurchaseHistory)                   // GET /api/v1/purchase-history?page=1&limit=10&status=DELIVERED
+			purchaseHistory.GET("/stats", handlers.GetUserPurchaseStats)               // GET /api/v1/purchase-history/stats
+			purchaseHistory.GET("/recent", handlers.GetRecentPurchases)                // GET /api/v1/purchase-history/recent?limit=5
+			purchaseHistory.GET("/search", handlers.SearchPurchaseHistory)             // GET /api/v1/purchase-history/search?q=samsung
 			purchaseHistory.GET("/date-range", handlers.GetPurchaseHistoryByDateRange) // GET /api/v1/purchase-history/date-range?user_id=1&start_date=2024-01-01&end_date=2024-12-31
 			purchaseHistory.GET("/:id", handlers.GetPurchaseHistoryByID)               // GET /api/v1/purchase-history/1?user_id=1
 			purchaseHistory.GET("/can-review/:product_id", handlers.CanReviewProduct)  // GET /api/v1/purchase-history/can-review/1?user_id=1

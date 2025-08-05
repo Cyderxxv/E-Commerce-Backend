@@ -1,60 +1,124 @@
 package services
 
 import (
-	"literally-backend/internal/models"
-	"time"
+"errors"
+"literally-backend/internal/models"
+"os"
+"time"
+
+"github.com/golang-jwt/jwt/v5"
 )
 
-// MockJWTService simulates JWT token generation
-// In production, use a proper JWT library like github.com/golang-jwt/jwt/v5
-type AuthService struct{}
-
-// GenerateToken generates a mock JWT token
-func (s *AuthService) GenerateToken(user models.User) string {
-	// In production, implement proper JWT token generation
-	// For now, return a mock token
-	return "mock_jwt_token_" + user.Email + "_" + time.Now().Format("20060102150405")
+// JWTClaims represents the JWT token claims
+type JWTClaims struct {
+UserID uint   `json:"user_id"`
+Email  string `json:"email"`
+jwt.RegisteredClaims
 }
 
-// ValidateToken validates a mock JWT token
-func (s *AuthService) ValidateToken(token string) (uint, bool) {
-	// In production, implement proper JWT token validation
-	// For now, extract user ID from mock token (simplified)
-	if len(token) > 15 && token[:15] == "mock_jwt_token_" {
-		// Mock validation - in real scenario, decode JWT and extract user ID
-		return 1, true // Return mock user ID
-	}
-	return 0, false
+// AuthService handles JWT operations
+type AuthService struct {
+secretKey []byte
 }
 
-// Login authenticates user and returns auth response
+// NewAuthService creates a new AuthService instance
+func NewAuthService() *AuthService {
+secret := os.Getenv("JWT_SECRET")
+if secret == "" {
+secret = "your-super-secret-jwt-key-change-this-in-production"
+}
+return &AuthService{
+secretKey: []byte(secret),
+}
+}
+
+// GenerateToken generates a real JWT token
+func (s *AuthService) GenerateToken(user models.User) (string, error) {
+claims := JWTClaims{
+UserID: user.ID,
+Email:  user.Email,
+RegisteredClaims: jwt.RegisteredClaims{
+ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+IssuedAt:  jwt.NewNumericDate(time.Now()),
+NotBefore: jwt.NewNumericDate(time.Now()),
+Issuer:    "literally-backend",
+Subject:   "user-auth",
+},
+}
+
+token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+return token.SignedString(s.secretKey)
+}
+
+// ValidateToken validates a JWT token and returns user ID
+func (s *AuthService) ValidateToken(tokenString string) (*JWTClaims, error) {
+token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+return nil, errors.New("invalid signing method")
+}
+return s.secretKey, nil
+})
+
+if err != nil {
+return nil, err
+}
+
+if claims, ok := token.Claims.(*JWTClaims); ok && token.Valid {
+return claims, nil
+}
+
+return nil, errors.New("invalid token")
+}
+
+// RefreshToken generates a new token with extended expiry
+func (s *AuthService) RefreshToken(tokenString string) (string, error) {
+claims, err := s.ValidateToken(tokenString)
+if err != nil {
+return "", err
+}
+
+user, found := GetUserByID(claims.UserID)
+if !found {
+return "", errors.New("user not found")
+}
+
+return s.GenerateToken(user)
+}
+
+// Login authenticates user and returns auth response with real JWT
 func Login(req models.LoginRequest) (models.AuthResponse, error) {
-	user, err := LoginUser(req)
-	if err != nil {
-		return models.AuthResponse{}, err
-	}
-
-	authService := &AuthService{}
-	token := authService.GenerateToken(user)
-
-	return models.AuthResponse{
-		User:  user.ToResponse(),
-		Token: token,
-	}, nil
+user, err := LoginUser(req)
+if err != nil {
+return models.AuthResponse{}, err
 }
 
-// Register creates new user and returns auth response
+authService := NewAuthService()
+token, err := authService.GenerateToken(user)
+if err != nil {
+return models.AuthResponse{}, err
+}
+
+return models.AuthResponse{
+User:  user.ToResponse(),
+Token: token,
+}, nil
+}
+
+// Register creates new user and returns auth response with real JWT
 func Register(req models.RegisterRequest) (models.AuthResponse, error) {
-	user, err := RegisterUser(req)
-	if err != nil {
-		return models.AuthResponse{}, err
-	}
+user, err := RegisterUser(req)
+if err != nil {
+return models.AuthResponse{}, err
+}
 
-	authService := &AuthService{}
-	token := authService.GenerateToken(user)
+authService := NewAuthService()
+token, err := authService.GenerateToken(user)
+if err != nil {
+return models.AuthResponse{}, err
+}
 
-	return models.AuthResponse{
-		User:  user.ToResponse(),
-		Token: token,
-	}, nil
+return models.AuthResponse{
+User:  user.ToResponse(),
+Token: token,
+}, nil
 }

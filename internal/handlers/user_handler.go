@@ -59,26 +59,17 @@ func Login(c *gin.Context) {
 
 // GetProfile handles GET /api/v1/profile (requires authentication)
 func GetProfile(c *gin.Context) {
-	// In a real app, extract user ID from JWT token
-	// For now, we'll get it from query parameter
-	userIDStr := c.Query("user_id")
-	if userIDStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "User ID is required",
-		})
-		return
-	}
-
-	userID, err := strconv.ParseUint(userIDStr, 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid user ID",
-		})
-		return
-	}
-
-	user, exists := services.GetUserByID(uint(userID))
+	// Extract user ID from JWT token
+	userID, exists := c.Get("user_id")
 	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "User not authenticated",
+		})
+		return
+	}
+
+	user, found := services.GetUserByID(userID.(uint))
+	if !found {
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": "User not found",
 		})
@@ -93,19 +84,11 @@ func GetProfile(c *gin.Context) {
 
 // UpdateProfile handles PUT /api/v1/profile (requires authentication)
 func UpdateProfile(c *gin.Context) {
-	// In a real app, extract user ID from JWT token
-	userIDStr := c.Query("user_id")
-	if userIDStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "User ID is required",
-		})
-		return
-	}
-
-	userID, err := strconv.ParseUint(userIDStr, 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid user ID",
+	// Extract user ID from JWT token
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "User not authenticated",
 		})
 		return
 	}
@@ -118,7 +101,7 @@ func UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	user, err := services.UpdateUser(uint(userID), req)
+	user, err := services.UpdateUser(userID.(uint), req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
@@ -129,6 +112,36 @@ func UpdateProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"data":    user.ToResponse(),
 		"message": "Profile updated successfully",
+	})
+}
+
+// RefreshToken handles POST /api/v1/auth/refresh (requires authentication)
+func RefreshToken(c *gin.Context) {
+	// Extract user info from current JWT token
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "User not authenticated",
+		})
+		return
+	}
+
+	// Get user from database to ensure user still exists
+	user, found := services.GetUserByID(userID.(uint))
+	if !found {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "User not found",
+		})
+		return
+	}
+
+	// For now, return a placeholder until we implement proper token refresh
+	c.JSON(http.StatusOK, gin.H{
+		"data": gin.H{
+			"user":  user.ToResponse(),
+			"token": "refreshed_token_placeholder", // TODO: implement real refresh
+		},
+		"message": "Token refresh successful (placeholder implementation)",
 	})
 }
 
