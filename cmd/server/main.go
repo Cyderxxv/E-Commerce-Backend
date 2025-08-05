@@ -131,13 +131,15 @@ func setupRoutes(router *gin.Engine) {
 		}
 
 		// Order routes (requires authentication)
-		// orders := v1.Group("/orders")
-		// {
-		//     orders.GET("", handlers.GetUserOrders)              // GET /api/v1/orders?user_id=1
-		//     orders.POST("", handlers.CreateOrder)               // POST /api/v1/orders?user_id=1
-		//     orders.GET("/:id", handlers.GetOrderByID)           // GET /api/v1/orders/1?user_id=1
-		//     orders.PUT("/:id/status", handlers.UpdateOrderStatus) // PUT /api/v1/orders/1/status (admin only)
-		// }
+		orders := v1.Group("/orders")
+		orders.Use(middleware.AuthMiddleware())
+		{
+			orders.GET("", handlers.GetUserOrders)                // GET /api/v1/orders
+			orders.POST("", handlers.CreateOrder)                 // POST /api/v1/orders
+			orders.GET("/stats", handlers.GetOrderStats)          // GET /api/v1/orders/stats
+			orders.GET("/:id", handlers.GetOrderByID)             // GET /api/v1/orders/:id
+			orders.PUT("/:id/status", handlers.UpdateOrderStatus) // PUT /api/v1/orders/:id/status (admin only)
+		}
 
 		// Wishlist routes (requires authentication)
 		// wishlist := v1.Group("/wishlist")
