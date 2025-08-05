@@ -13,6 +13,10 @@ type Order struct {
 	ShippingAddress string    `json:"shipping_address"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
+
+	// Relationships
+	OrderItems []OrderItem `json:"order_items,omitempty" gorm:"foreignKey:OrderID"`
+	User       User        `json:"user,omitempty" gorm:"foreignKey:UserID"`
 }
 
 // OrderItem represents an item in an order
@@ -23,6 +27,10 @@ type OrderItem struct {
 	Quantity  int       `json:"quantity"`
 	Price     float64   `json:"price"`
 	CreatedAt time.Time `json:"created_at"`
+
+	// Relationships
+	Order   Order   `json:"order,omitempty" gorm:"foreignKey:OrderID"`
+	Product Product `json:"product,omitempty" gorm:"foreignKey:ProductID"`
 }
 
 // OrderWithItems represents order with its items

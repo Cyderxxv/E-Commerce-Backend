@@ -54,6 +54,13 @@ func CreateOrder(userID uint, shippingAddress string) (*models.Order, error) {
 	return orderService.CreateOrder(userID, shippingAddress)
 }
 
+func CreateOrderFromRequest(userID uint, req models.CreateOrderRequest) (*models.Order, error) {
+	if orderService == nil {
+		InitOrderService()
+	}
+	return orderService.CreateOrderFromRequest(userID, req)
+}
+
 func GetOrderStats(userID uint) (map[string]interface{}, error) {
 	if orderService == nil {
 		InitOrderService()
@@ -241,4 +248,77 @@ func (s *OrderService) GetOrderStats(userID uint) (map[string]interface{}, error
 	}
 
 	return stats, nil
+}
+
+func (s *OrderService) CreateOrderFromRequest(userID uint, req models.CreateOrderRequest) (*models.Order, error) {
+	// Begin transaction
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Calculate total amount from items
+	var totalAmount float64
+	for _, item := range req.Items {
+		var product models.Product
+		if err := tx.Where("id = ?", item.ProductID).First(&product).Error; err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("product not found: %d", item.ProductID)
+		}
+		totalAmount += product.Price * float64(item.Quantity)
+	}
+
+	// Create order
+	order := models.Order{
+		UserID:          userID,
+		TotalAmount:     totalAmount,
+		Status:          "pending",
+		PaymentMethodID: req.PaymentMethodID,
+		IsInstallment:   req.IsInstallment,
+		ShippingAddress: req.ShippingAddress,
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+	}
+
+	if err := tx.Create(&order).Error; err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	// Create order items
+	for _, reqItem := range req.Items {
+		var product models.Product
+		if err := tx.Where("id = ?", reqItem.ProductID).First(&product).Error; err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+
+		orderItem := models.OrderItem{
+			OrderID:   order.ID,
+			ProductID: reqItem.ProductID,
+			Quantity:  reqItem.Quantity,
+			Price:     product.Price,
+		}
+		if err := tx.Create(&orderItem).Error; err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
+	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
+		return nil, err
+	}
+
+	// Load complete order with items
+	if err := s.db.Where("id = ?", order.ID).
+		Preload("OrderItems").
+		Preload("OrderItems.Product").
+		First(&order).Error; err != nil {
+		return nil, err
+	}
+
+	return &order, nil
 }

@@ -117,7 +117,7 @@ func CreateOrder(c *gin.Context) {
 	}
 
 	// Create order
-	order, err := services.CreateOrder(userID.(uint), req.ShippingAddress)
+	order, err := services.CreateOrderFromRequest(userID.(uint), req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to create order",

@@ -1,4 +1,9 @@
-# Literally Backend
+POST /api/v1/auth/register
+{
+  "name": "Test User",
+  "email": "test@example.com", 
+  "password": "password123"
+}# Literally Backend
 
 A modern Go e-commerce backend API built with Gin framework and PostgreSQL.
 
@@ -150,6 +155,13 @@ The server will start on `http://localhost:8080` and automatically:
 - `DELETE /api/v1/cart/:id?user_id=1` - Remove item from cart
 - `DELETE /api/v1/cart?user_id=1` - Clear all cart items
 
+### Order Management (requires authentication)
+- `GET /api/v1/orders` - Get user's order history with pagination and filtering
+- `POST /api/v1/orders` - Create new order from cart
+- `GET /api/v1/orders/stats` - Get order statistics for user
+- `GET /api/v1/orders/:id` - Get specific order details
+- `PUT /api/v1/orders/:id/status` - Update order status
+
 ### Purchase History
 - `GET /api/v1/purchase-history?user_id=1` - Get user's purchase history with filtering
 - `GET /api/v1/purchase-history/stats?user_id=1` - Get purchase statistics
@@ -221,6 +233,42 @@ curl -X POST "http://localhost:8080/api/v1/cart?user_id=1" \
 ### Get Cart
 ```bash
 curl "http://localhost:8080/api/v1/cart?user_id=1"
+```
+
+### Get Order History
+```bash
+curl -H "Authorization: Bearer <jwt_token>" \
+  "http://localhost:8080/api/v1/orders?page=1&limit=10"
+```
+
+### Create Order from Cart
+```bash
+curl -X POST -H "Authorization: Bearer <jwt_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"shipping_address": "123 Main St, City"}' \
+  "http://localhost:8080/api/v1/orders"
+```
+
+### Create Order with Specific Items
+```bash
+curl -X POST -H "Authorization: Bearer <jwt_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "payment_method_id": 1,
+    "is_installment": false,
+    "shipping_address": "123 Main St, City",
+    "items": [
+      {"product_id": 1, "quantity": 2},
+      {"product_id": 3, "quantity": 1}
+    ]
+  }' \
+  "http://localhost:8080/api/v1/orders"
+```
+
+### Get Order Statistics
+```bash
+curl -H "Authorization: Bearer <jwt_token>" \
+  "http://localhost:8080/api/v1/orders/stats"
 ```
 
 ### Get Purchase History
