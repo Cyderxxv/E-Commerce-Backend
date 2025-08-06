@@ -204,3 +204,17 @@ func DeleteUser(id uint) error {
 
 	return nil
 }
+
+// UpdateUserStatus updates user status by ID
+func UpdateUserStatus(id uint, status string) error {
+	result := configs.DB.Model(&models.User{}).Where("id = ?", id).Update("status", status)
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return errors.New("user not found")
+	}
+
+	return nil
+}

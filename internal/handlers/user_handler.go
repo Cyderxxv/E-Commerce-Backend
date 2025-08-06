@@ -373,3 +373,48 @@ func DeleteUser(c *gin.Context) {
 		"message": "User deleted successfully",
 	})
 }
+
+// UpdateUserStatus godoc
+// @Summary Update user status
+// @Description Update user status (ACTIVE/INACTIVE/SUSPENDED) by ID (admin only)
+// @Tags users
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param id path int true "User ID"
+// @Param status body models.UpdateUserStatusRequest true "User status update data"
+// @Success 200 {object} map[string]interface{} "User status updated successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request - Invalid input"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Failure 404 {object} map[string]interface{} "User not found"
+// @Router /users/{id}/status [put]
+func UpdateUserStatus(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid user ID",
+		})
+		return
+	}
+
+	var req models.UpdateUserStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	err = services.UpdateUserStatus(uint(id), req.Status)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "User status updated successfully",
+	})
+}

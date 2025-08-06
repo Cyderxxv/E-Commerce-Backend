@@ -93,3 +93,8 @@ func (u *User) ToResponse() UserResponse {
 		UpdatedAt:   u.UpdatedAt,
 	}
 }
+
+// UpdateUserStatusRequest represents the request body for updating user status
+type UpdateUserStatusRequest struct {
+	Status string `json:"status" binding:"required,oneof=ACTIVE INACTIVE SUSPENDED"`
+}

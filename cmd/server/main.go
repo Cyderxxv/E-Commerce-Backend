@@ -105,6 +105,26 @@ func setupRoutes(router *gin.Engine) {
 			adminProfile.GET("/profile", handlers.GetAdminProfile)
 		}
 
+		// Admin management routes (requires admin authentication)
+		adminManagement := v1.Group("/admin")
+		adminManagement.Use(middleware.AdminAuthMiddleware())
+		{
+			// Admin product management
+			adminManagement.GET("/products", handlers.GetProducts)
+			adminManagement.GET("/products/:id", handlers.GetProductByID)
+			adminManagement.POST("/products", handlers.CreateProduct)
+			adminManagement.PUT("/products/:id", handlers.UpdateProduct)
+			adminManagement.DELETE("/products/:id", handlers.DeleteProduct)
+
+			// Admin user management
+			adminManagement.GET("/users", handlers.GetUsers)
+			adminManagement.GET("/users/:id", handlers.GetUserByID)
+			adminManagement.POST("/users", handlers.CreateUser)
+			adminManagement.PUT("/users/:id", handlers.UpdateUser)
+			adminManagement.PUT("/users/:id/status", handlers.UpdateUserStatus)
+			adminManagement.DELETE("/users/:id", handlers.DeleteUser)
+		}
+
 		// Profile routes (requires authentication)
 		profile := v1.Group("/")
 		profile.Use(middleware.AuthMiddleware())
@@ -121,6 +141,7 @@ func setupRoutes(router *gin.Engine) {
 			users.GET("/:id", handlers.GetUserByID)
 			users.POST("", handlers.CreateUser)
 			users.PUT("/:id", handlers.UpdateUser)
+			users.PUT("/:id/status", handlers.UpdateUserStatus)
 			users.DELETE("/:id", handlers.DeleteUser)
 		}
 
@@ -135,15 +156,6 @@ func setupRoutes(router *gin.Engine) {
 			products.GET("/featured", handlers.GetFeaturedProducts) // GET /api/v1/products/featured
 			products.GET("/search", handlers.SearchProducts)        // GET /api/v1/products/search?q=phone
 			products.GET("/:id", handlers.GetProductByID)
-		}
-
-		// Admin product routes (requires admin authentication)
-		adminProducts := v1.Group("/products")
-		adminProducts.Use(middleware.AdminAuthMiddleware())
-		{
-			adminProducts.POST("", handlers.CreateProduct)
-			adminProducts.PUT("/:id", handlers.UpdateProduct)
-			adminProducts.DELETE("/:id", handlers.DeleteProduct)
 		}
 
 		// Cart routes (requires authentication)
