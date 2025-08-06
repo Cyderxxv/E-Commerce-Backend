@@ -91,6 +91,20 @@ func setupRoutes(router *gin.Engine) {
 			auth.POST("/login", handlers.Login)
 		}
 
+		// Admin authentication routes (public)
+		adminAuth := v1.Group("/admin/auth")
+		{
+			adminAuth.POST("/login", handlers.AdminLogin)
+			adminAuth.POST("/register", handlers.AdminRegister)
+		}
+
+		// Admin profile routes (requires admin authentication)
+		adminProfile := v1.Group("/admin")
+		adminProfile.Use(middleware.AdminAuthMiddleware())
+		{
+			adminProfile.GET("/profile", handlers.GetAdminProfile)
+		}
+
 		// Profile routes (requires authentication)
 		profile := v1.Group("/")
 		profile.Use(middleware.AuthMiddleware())
@@ -99,9 +113,9 @@ func setupRoutes(router *gin.Engine) {
 			profile.PUT("/profile", handlers.UpdateProfile)
 		}
 
-		// User routes (admin only - for now, require authentication)
+		// User routes (admin only)
 		users := v1.Group("/users")
-		users.Use(middleware.AuthMiddleware())
+		users.Use(middleware.AdminAuthMiddleware())
 		{
 			users.GET("", handlers.GetUsers)
 			users.GET("/:id", handlers.GetUserByID)
@@ -123,9 +137,9 @@ func setupRoutes(router *gin.Engine) {
 			products.GET("/:id", handlers.GetProductByID)
 		}
 
-		// Admin product routes (requires authentication)
+		// Admin product routes (requires admin authentication)
 		adminProducts := v1.Group("/products")
-		adminProducts.Use(middleware.AuthMiddleware())
+		adminProducts.Use(middleware.AdminAuthMiddleware())
 		{
 			adminProducts.POST("", handlers.CreateProduct)
 			adminProducts.PUT("/:id", handlers.UpdateProduct)
@@ -160,11 +174,17 @@ func setupRoutes(router *gin.Engine) {
 		orders := v1.Group("/orders")
 		orders.Use(middleware.AuthMiddleware())
 		{
-			orders.GET("", handlers.GetUserOrders)                // GET /api/v1/orders
-			orders.POST("", handlers.CreateOrder)                 // POST /api/v1/orders
-			orders.GET("/stats", handlers.GetOrderStats)          // GET /api/v1/orders/stats
-			orders.GET("/:id", handlers.GetOrderByID)             // GET /api/v1/orders/:id
-			orders.PUT("/:id/status", handlers.UpdateOrderStatus) // PUT /api/v1/orders/:id/status (admin only)
+			orders.GET("", handlers.GetUserOrders)       // GET /api/v1/orders
+			orders.POST("", handlers.CreateOrder)        // POST /api/v1/orders
+			orders.GET("/stats", handlers.GetOrderStats) // GET /api/v1/orders/stats
+			orders.GET("/:id", handlers.GetOrderByID)    // GET /api/v1/orders/:id
+		}
+
+		// Admin order routes (requires admin authentication)
+		adminOrders := v1.Group("/orders")
+		adminOrders.Use(middleware.AdminAuthMiddleware())
+		{
+			adminOrders.PUT("/:id/status", handlers.UpdateOrderStatus) // PUT /api/v1/orders/:id/status (admin only)
 		}
 
 		// Wishlist routes (requires authentication)

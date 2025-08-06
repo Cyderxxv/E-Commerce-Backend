@@ -8,13 +8,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// MigrateDatabase tự động tạo tables từ models
 func MigrateDatabase() {
 	log.Println("Starting database migration...")
 
 	// Auto migrate all models
 	err := DB.AutoMigrate(
 		&models.User{},
+		&models.Admin{},
 		&models.Category{},
 		&models.Product{},
 		&models.Cart{},
@@ -43,6 +43,9 @@ func MigrateDatabase() {
 // seedDefaultData thêm dữ liệu mặc định
 func seedDefaultData() {
 	log.Println("Seeding default data...")
+
+	// Seed admin first
+	seedAdmin()
 
 	// Seed users
 	seedUsers()
@@ -345,5 +348,21 @@ func seedSampleProducts() {
 			DB.Create(&product)
 		}
 		log.Println("Sample products seeded")
+	}
+}
+
+// seedAdmin creates default admin user
+func seedAdmin() {
+	var count int64
+	DB.Model(&models.Admin{}).Count(&count)
+
+	if count == 0 {
+		admin := models.Admin{
+			Username:     "admin",
+			PasswordHash: mustHashPassword("admin123"),
+		}
+
+		DB.Create(&admin)
+		log.Println("Default admin created: username=admin, password=admin123")
 	}
 }

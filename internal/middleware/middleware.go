@@ -172,3 +172,102 @@ func OptionalAuthMiddleware() gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+// AdminJWTClaims represents the JWT token claims for admin
+type AdminJWTClaims struct {
+	AdminID  uint   `json:"admin_id"`
+	Username string `json:"username"`
+	IsAdmin  bool   `json:"is_admin"`
+	jwt.RegisteredClaims
+}
+
+// getAdminJWTSecret returns the admin JWT secret key
+func getAdminJWTSecret() []byte {
+	secret := "your-super-secret-admin-jwt-key-change-this-in-production"
+	return []byte(secret)
+}
+
+// validateAdminToken validates an admin JWT token locally
+func validateAdminToken(tokenString string) (*AdminJWTClaims, error) {
+	secretKey := getAdminJWTSecret()
+
+	// Parse token
+	token, err := jwt.ParseWithClaims(tokenString, &AdminJWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+		// Validate signing method
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("invalid signing method")
+		}
+		return secretKey, nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate token and extract claims
+	if claims, ok := token.Claims.(*AdminJWTClaims); ok && token.Valid {
+		return claims, nil
+	}
+
+	return nil, errors.New("invalid token")
+}
+
+// AdminAuthMiddleware validates admin JWT tokens
+func AdminAuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Get Authorization header
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "Authorization header required",
+			})
+			c.Abort()
+			return
+		}
+
+		// Check if header starts with "Bearer "
+		if !strings.HasPrefix(authHeader, "Bearer ") {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "Invalid authorization header format",
+			})
+			c.Abort()
+			return
+		}
+
+		// Extract token
+		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+		if tokenString == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "Token required",
+			})
+			c.Abort()
+			return
+		}
+
+		// Validate admin token
+		claims, err := validateAdminToken(tokenString)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "Invalid or expired admin token",
+			})
+			c.Abort()
+			return
+		}
+
+		// Check if user is actually admin
+		if !claims.IsAdmin {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error": "Admin access required",
+			})
+			c.Abort()
+			return
+		}
+
+		// Store admin info in context
+		c.Set("admin_id", claims.AdminID)
+		c.Set("admin_username", claims.Username)
+		c.Set("is_admin", claims.IsAdmin)
+
+		c.Next()
+	}
+}

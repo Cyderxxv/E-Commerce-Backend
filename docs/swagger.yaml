@@ -1,4 +1,15 @@
 basePath: /api/v1
+definitions:
+  models.AdminLoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
 host: localhost:8080
 info:
   contact:
@@ -13,6 +24,67 @@ info:
   title: Literally Backend API
   version: "1.0"
 paths:
+  /admin/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate admin and return JWT token
+      parameters:
+      - description: Admin login credentials
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/models.AdminLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request - Invalid input
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized - Invalid credentials
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Admin login
+      tags:
+      - admin-auth
+  /admin/profile:
+    get:
+      consumes:
+      - application/json
+      description: Get the authenticated admin's profile information
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Profile retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Admin not found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Get admin profile
+      tags:
+      - admin-auth
   /auth/login:
     post:
       consumes:
