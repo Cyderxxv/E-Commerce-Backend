@@ -9,7 +9,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Register handles POST /api/v1/auth/register
+// Register godoc
+// @Summary Register a new user
+// @Description Register a new user account
+// @Tags authentication
+// @Accept json
+// @Produce json
+// @Param user body object true "User registration data"
+// @Success 201 {object} map[string]interface{} "User registered successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request - Invalid input"
+// @Router /auth/register [post]
 func Register(c *gin.Context) {
 	var req models.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -33,7 +42,17 @@ func Register(c *gin.Context) {
 	})
 }
 
-// Login handles POST /api/v1/auth/login
+// Login godoc
+// @Summary User login
+// @Description Authenticate user and return JWT token
+// @Tags authentication
+// @Accept json
+// @Produce json
+// @Param credentials body object true "User login credentials"
+// @Success 200 {object} map[string]interface{} "Login successful"
+// @Failure 400 {object} map[string]interface{} "Bad request - Invalid input"
+// @Failure 401 {object} map[string]interface{} "Unauthorized - Invalid credentials"
+// @Router /auth/login [post]
 func Login(c *gin.Context) {
 	var req models.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -57,7 +76,17 @@ func Login(c *gin.Context) {
 	})
 }
 
-// GetProfile handles GET /api/v1/profile (requires authentication)
+// GetProfile godoc
+// @Summary Get user profile
+// @Description Get the authenticated user's profile information
+// @Tags profile
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Success 200 {object} map[string]interface{} "Profile retrieved successfully"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Failure 404 {object} map[string]interface{} "User not found"
+// @Router /profile [get]
 func GetProfile(c *gin.Context) {
 	// Extract user ID from JWT token
 	userID, exists := c.Get("user_id")
@@ -82,7 +111,19 @@ func GetProfile(c *gin.Context) {
 	})
 }
 
-// UpdateProfile handles PUT /api/v1/profile (requires authentication)
+// UpdateProfile godoc
+// @Summary Update user profile
+// @Description Update the authenticated user's profile information
+// @Tags profile
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param profile body object true "Updated profile data"
+// @Success 200 {object} map[string]interface{} "Profile updated successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request - Invalid input"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Failure 404 {object} map[string]interface{} "User not found"
+// @Router /profile [put]
 func UpdateProfile(c *gin.Context) {
 	// Extract user ID from JWT token
 	userID, exists := c.Get("user_id")
@@ -115,7 +156,17 @@ func UpdateProfile(c *gin.Context) {
 	})
 }
 
-// RefreshToken handles POST /api/v1/auth/refresh (requires authentication)
+// RefreshToken godoc
+// @Summary Refresh JWT token
+// @Description Refresh the JWT token for authenticated user
+// @Tags authentication
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Success 200 {object} map[string]interface{} "Token refreshed successfully"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Failure 404 {object} map[string]interface{} "User not found"
+// @Router /auth/refresh [post]
 func RefreshToken(c *gin.Context) {
 	// Extract user info from current JWT token
 	userID, exists := c.Get("user_id")
@@ -145,7 +196,16 @@ func RefreshToken(c *gin.Context) {
 	})
 }
 
-// GetUsers handles GET /api/v1/users
+// GetUsers godoc
+// @Summary Get all users
+// @Description Get a list of all users (admin only)
+// @Tags users
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Success 200 {object} map[string]interface{} "Users retrieved successfully"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Router /users [get]
 func GetUsers(c *gin.Context) {
 	users := services.GetAllUsers()
 
@@ -160,7 +220,19 @@ func GetUsers(c *gin.Context) {
 	})
 }
 
-// GetUserByID handles GET /api/v1/users/:id
+// GetUserByID godoc
+// @Summary Get user by ID
+// @Description Get a specific user by their ID (admin only)
+// @Tags users
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param id path int true "User ID"
+// @Success 200 {object} map[string]interface{} "User retrieved successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request - Invalid user ID"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Failure 404 {object} map[string]interface{} "User not found"
+// @Router /users/{id} [get]
 func GetUserByID(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.ParseUint(idParam, 10, 32)
@@ -185,7 +257,18 @@ func GetUserByID(c *gin.Context) {
 	})
 }
 
-// CreateUser handles POST /api/v1/users
+// CreateUser godoc
+// @Summary Create a new user
+// @Description Create a new user account (admin only)
+// @Tags users
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param user body object true "User creation data"
+// @Success 201 {object} map[string]interface{} "User created successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request - Invalid input"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Router /users [post]
 func CreateUser(c *gin.Context) {
 	var req models.CreateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -209,7 +292,20 @@ func CreateUser(c *gin.Context) {
 	})
 }
 
-// UpdateUser handles PUT /api/v1/users/:id
+// UpdateUser godoc
+// @Summary Update user by ID
+// @Description Update a specific user by their ID (admin only)
+// @Tags users
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param id path int true "User ID"
+// @Param user body object true "Updated user data"
+// @Success 200 {object} map[string]interface{} "User updated successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request - Invalid input"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Failure 404 {object} map[string]interface{} "User not found"
+// @Router /users/{id} [put]
 func UpdateUser(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.ParseUint(idParam, 10, 32)
@@ -242,7 +338,19 @@ func UpdateUser(c *gin.Context) {
 	})
 }
 
-// DeleteUser handles DELETE /api/v1/users/:id
+// DeleteUser godoc
+// @Summary Delete user by ID
+// @Description Delete a specific user by their ID (admin only)
+// @Tags users
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param id path int true "User ID"
+// @Success 200 {object} map[string]interface{} "User deleted successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request - Invalid user ID"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Failure 404 {object} map[string]interface{} "User not found"
+// @Router /users/{id} [delete]
 func DeleteUser(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.ParseUint(idParam, 10, 32)

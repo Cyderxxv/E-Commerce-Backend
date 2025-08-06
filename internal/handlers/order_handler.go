@@ -9,7 +9,20 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GetUserOrders handles GET /api/v1/orders (requires authentication)
+// GetUserOrders godoc
+// @Summary Get user orders
+// @Description Get a list of orders for the authenticated user with pagination and optional status filtering
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param status query string false "Filter by order status (PENDING, CONFIRMED, SHIPPED, DELIVERED, CANCELLED)"
+// @Param limit query int false "Number of orders to return (default: 10)"
+// @Param offset query int false "Number of orders to skip (default: 0)"
+// @Success 200 {object} map[string]interface{} "Success response with orders and pagination"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /orders [get]
 func GetUserOrders(c *gin.Context) {
 	// Get user ID from JWT token
 	userID, exists := c.Get("user_id")
@@ -60,7 +73,19 @@ func GetUserOrders(c *gin.Context) {
 	})
 }
 
-// GetOrderByID handles GET /api/v1/orders/:id (requires authentication)
+// GetOrderByID godoc
+// @Summary Get order by ID
+// @Description Get a specific order by ID for the authenticated user
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param id path int true "Order ID"
+// @Success 200 {object} map[string]interface{} "Success response with order details"
+// @Failure 400 {object} map[string]interface{} "Bad request - Invalid order ID"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Failure 404 {object} map[string]interface{} "Order not found"
+// @Router /orders/{id} [get]
 func GetOrderByID(c *gin.Context) {
 	// Get user ID from JWT token
 	userID, exists := c.Get("user_id")
@@ -96,7 +121,19 @@ func GetOrderByID(c *gin.Context) {
 	})
 }
 
-// CreateOrder handles POST /api/v1/orders (requires authentication)
+// CreateOrder godoc
+// @Summary Create new order
+// @Description Create a new order from cart items or specific items for the authenticated user
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param order body object false "Order creation request (optional - if not provided, creates order from cart)"
+// @Success 201 {object} map[string]interface{} "Success response with created order"
+// @Failure 400 {object} map[string]interface{} "Bad request - Invalid input"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /orders [post]
 func CreateOrder(c *gin.Context) {
 	// Get user ID from JWT token
 	userID, exists := c.Get("user_id")
@@ -131,7 +168,19 @@ func CreateOrder(c *gin.Context) {
 	})
 }
 
-// UpdateOrderStatus handles PUT /api/v1/orders/:id/status (admin only)
+// UpdateOrderStatus godoc
+// @Summary Update order status
+// @Description Update the status of an order (admin only)
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param id path int true "Order ID"
+// @Param status body object true "Status update request"
+// @Success 200 {object} map[string]interface{} "Success response"
+// @Failure 400 {object} map[string]interface{} "Bad request - Invalid input"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /orders/{id}/status [put]
 func UpdateOrderStatus(c *gin.Context) {
 	// Get order ID from URL parameter
 	orderIDStr := c.Param("id")
@@ -166,7 +215,17 @@ func UpdateOrderStatus(c *gin.Context) {
 	})
 }
 
-// GetOrderStats handles GET /api/v1/orders/stats (requires authentication)
+// GetOrderStats godoc
+// @Summary Get order statistics
+// @Description Get order statistics for the authenticated user
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Success 200 {object} map[string]interface{} "Success response with order statistics"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /orders/stats [get]
 func GetOrderStats(c *gin.Context) {
 	// Get user ID from JWT token
 	userID, exists := c.Get("user_id")

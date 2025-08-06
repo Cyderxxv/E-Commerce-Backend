@@ -10,7 +10,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GetUserPurchaseHistory handles GET /api/v1/purchase-history
+// GetUserPurchaseHistory godoc
+// @Summary Get user purchase history
+// @Description Get purchase history for the authenticated user with pagination and filtering
+// @Tags purchase-history
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param page query int false "Page number (default: 1)"
+// @Param limit query int false "Items per page (default: 10)"
+// @Param status query string false "Filter by order status"
+// @Param start_date query string false "Start date filter (YYYY-MM-DD)"
+// @Param end_date query string false "End date filter (YYYY-MM-DD)"
+// @Success 200 {object} map[string]interface{} "Purchase history retrieved successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request - Invalid input"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Router /purchase-history [get]
 func GetUserPurchaseHistory(c *gin.Context) {
 	// In a real app, get user ID from JWT token
 	// For now, we'll get it from query param or use a default

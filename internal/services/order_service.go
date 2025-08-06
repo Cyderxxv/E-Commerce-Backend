@@ -147,6 +147,7 @@ func (s *OrderService) CreateOrder(userID uint, shippingAddress string) (*models
 		return nil, fmt.Errorf("cart is empty")
 	}
 
+	// Validate stock availability and calculate total amount
 	var totalAmount float64
 	for _, item := range cartItems {
 		var product models.Product
@@ -154,6 +155,14 @@ func (s *OrderService) CreateOrder(userID uint, shippingAddress string) (*models
 			tx.Rollback()
 			return nil, err
 		}
+
+		// Check if there's enough stock
+		if product.Stock < item.Quantity {
+			tx.Rollback()
+			return nil, fmt.Errorf("insufficient stock for product %s. Available: %d, Requested: %d",
+				product.Name, product.Stock, item.Quantity)
+		}
+
 		totalAmount += product.Price * float64(item.Quantity)
 	}
 
@@ -171,6 +180,7 @@ func (s *OrderService) CreateOrder(userID uint, shippingAddress string) (*models
 		return nil, err
 	}
 
+	// Create order items and update product stock
 	for _, cartItem := range cartItems {
 		var product models.Product
 		if err := tx.Where("id = ?", cartItem.ProductID).First(&product).Error; err != nil {
@@ -178,6 +188,7 @@ func (s *OrderService) CreateOrder(userID uint, shippingAddress string) (*models
 			return nil, err
 		}
 
+		// Create order item
 		orderItem := models.OrderItem{
 			OrderID:   order.ID,
 			ProductID: cartItem.ProductID,
@@ -188,8 +199,24 @@ func (s *OrderService) CreateOrder(userID uint, shippingAddress string) (*models
 			tx.Rollback()
 			return nil, err
 		}
+
+		// Update product stock (decrease by purchased quantity)
+		newStock := product.Stock - cartItem.Quantity
+		if err := tx.Model(&product).Update("stock", newStock).Error; err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("failed to update stock for product %d: %v", cartItem.ProductID, err)
+		}
+
+		// If stock reaches 0, mark product as unavailable
+		if newStock == 0 {
+			if err := tx.Model(&product).Update("is_available", false).Error; err != nil {
+				tx.Rollback()
+				return nil, fmt.Errorf("failed to update availability for product %d: %v", cartItem.ProductID, err)
+			}
+		}
 	}
 
+	// Clear cart after successful order creation
 	if err := tx.Where("user_id = ?", userID).Delete(&models.Cart{}).Error; err != nil {
 		tx.Rollback()
 		return nil, err
@@ -259,7 +286,7 @@ func (s *OrderService) CreateOrderFromRequest(userID uint, req models.CreateOrde
 		}
 	}()
 
-	// Calculate total amount from items
+	// Calculate total amount and validate stock availability
 	var totalAmount float64
 	for _, item := range req.Items {
 		var product models.Product
@@ -267,6 +294,14 @@ func (s *OrderService) CreateOrderFromRequest(userID uint, req models.CreateOrde
 			tx.Rollback()
 			return nil, fmt.Errorf("product not found: %d", item.ProductID)
 		}
+
+		// Check if there's enough stock
+		if product.Stock < item.Quantity {
+			tx.Rollback()
+			return nil, fmt.Errorf("insufficient stock for product %s. Available: %d, Requested: %d",
+				product.Name, product.Stock, item.Quantity)
+		}
+
 		totalAmount += product.Price * float64(item.Quantity)
 	}
 
@@ -287,7 +322,7 @@ func (s *OrderService) CreateOrderFromRequest(userID uint, req models.CreateOrde
 		return nil, err
 	}
 
-	// Create order items
+	// Create order items and update product stock
 	for _, reqItem := range req.Items {
 		var product models.Product
 		if err := tx.Where("id = ?", reqItem.ProductID).First(&product).Error; err != nil {
@@ -295,6 +330,7 @@ func (s *OrderService) CreateOrderFromRequest(userID uint, req models.CreateOrde
 			return nil, err
 		}
 
+		// Create order item
 		orderItem := models.OrderItem{
 			OrderID:   order.ID,
 			ProductID: reqItem.ProductID,
@@ -304,6 +340,21 @@ func (s *OrderService) CreateOrderFromRequest(userID uint, req models.CreateOrde
 		if err := tx.Create(&orderItem).Error; err != nil {
 			tx.Rollback()
 			return nil, err
+		}
+
+		// Update product stock (decrease by purchased quantity)
+		newStock := product.Stock - reqItem.Quantity
+		if err := tx.Model(&product).Update("stock", newStock).Error; err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("failed to update stock for product %d: %v", reqItem.ProductID, err)
+		}
+
+		// If stock reaches 0, mark product as unavailable
+		if newStock == 0 {
+			if err := tx.Model(&product).Update("is_available", false).Error; err != nil {
+				tx.Rollback()
+				return nil, fmt.Errorf("failed to update availability for product %d: %v", reqItem.ProductID, err)
+			}
 		}
 	}
 

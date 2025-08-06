@@ -2,6 +2,7 @@ package main
 
 import (
 	"literally-backend/configs"
+	_ "literally-backend/docs" // Import generated docs
 	"literally-backend/internal/handlers"
 	"literally-backend/internal/middleware"
 	"log"
@@ -9,7 +10,29 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
+
+// @title           Literally Backend API
+// @version         1.0
+// @description     This is a comprehensive e-commerce backend API server.
+// @termsOfService  http://swagger.io/terms/
+
+// @contact.name   API Support
+// @contact.url    http://www.swagger.io/support
+// @contact.email  support@swagger.io
+
+// @license.name  Apache 2.0
+// @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host      localhost:8080
+// @BasePath  /api/v1
+
+// @securityDefinitions.apikey Bearer
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
 
 func main() {
 	// Load environment variables
@@ -47,6 +70,9 @@ func main() {
 }
 
 func setupRoutes(router *gin.Engine) {
+	// Swagger route
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 	// Health check endpoint
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{

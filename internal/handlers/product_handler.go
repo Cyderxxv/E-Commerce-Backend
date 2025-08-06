@@ -9,7 +9,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GetProducts handles GET /api/v1/products
+// GetProducts godoc
+// @Summary Get products
+// @Description Get a list of products with optional filtering by category, featured status, or search query
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param category_id query string false "Filter by category ID"
+// @Param featured query string false "Filter featured products (true/false)"
+// @Param search query string false "Search products by name or description"
+// @Success 200 {object} map[string]interface{} "Products retrieved successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request - Invalid category ID"
+// @Router /products [get]
 func GetProducts(c *gin.Context) {
 	// Check for query parameters
 	categoryID := c.Query("category_id")
@@ -45,7 +56,14 @@ func GetProducts(c *gin.Context) {
 	})
 }
 
-// GetFeaturedProducts handles GET /api/v1/products/featured
+// GetFeaturedProducts godoc
+// @Summary Get featured products
+// @Description Get a list of featured products
+// @Tags products
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{} "Featured products retrieved successfully"
+// @Router /products/featured [get]
 func GetFeaturedProducts(c *gin.Context) {
 	products := services.GetFeaturedProducts()
 
@@ -55,7 +73,14 @@ func GetFeaturedProducts(c *gin.Context) {
 	})
 }
 
-// GetCategories handles GET /api/v1/categories
+// GetCategories godoc
+// @Summary Get all categories
+// @Description Get a list of all product categories
+// @Tags categories
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{} "Categories retrieved successfully"
+// @Router /categories [get]
 func GetCategories(c *gin.Context) {
 	categories := services.GetAllCategories()
 
@@ -65,7 +90,17 @@ func GetCategories(c *gin.Context) {
 	})
 }
 
-// GetProductsByCategory handles GET /api/v1/categories/:id/products
+// GetProductsByCategory godoc
+// @Summary Get products by category
+// @Description Get a list of products in a specific category
+// @Tags categories
+// @Accept json
+// @Produce json
+// @Param id path int true "Category ID"
+// @Success 200 {object} map[string]interface{} "Products retrieved successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request - Invalid category ID"
+// @Failure 404 {object} map[string]interface{} "Category not found"
+// @Router /categories/{id}/products [get]
 func GetProductsByCategory(c *gin.Context) {
 	categoryIDParam := c.Param("id")
 	categoryID, err := strconv.ParseUint(categoryIDParam, 10, 32)
@@ -93,7 +128,16 @@ func GetProductsByCategory(c *gin.Context) {
 	})
 }
 
-// SearchProducts handles GET /api/v1/products/search
+// SearchProducts godoc
+// @Summary Search products
+// @Description Search for products by name or description
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param q query string true "Search query"
+// @Success 200 {object} map[string]interface{} "Search results retrieved successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request - Search query is required"
+// @Router /products/search [get]
 func SearchProducts(c *gin.Context) {
 	query := c.Query("q")
 	if query == "" {
@@ -111,7 +155,17 @@ func SearchProducts(c *gin.Context) {
 	})
 }
 
-// GetProductByID handles GET /api/v1/products/:id
+// GetProductByID godoc
+// @Summary Get product by ID
+// @Description Get a specific product by its ID
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param id path int true "Product ID"
+// @Success 200 {object} map[string]interface{} "Product retrieved successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request - Invalid product ID"
+// @Failure 404 {object} map[string]interface{} "Product not found"
+// @Router /products/{id} [get]
 func GetProductByID(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.ParseUint(idParam, 10, 32)
@@ -136,7 +190,18 @@ func GetProductByID(c *gin.Context) {
 	})
 }
 
-// CreateProduct handles POST /api/v1/products
+// CreateProduct godoc
+// @Summary Create a new product
+// @Description Create a new product (admin only)
+// @Tags products
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param product body object true "Product creation data"
+// @Success 201 {object} map[string]interface{} "Product created successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request - Invalid input"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Router /products [post]
 func CreateProduct(c *gin.Context) {
 	var req models.CreateProductRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -160,7 +225,20 @@ func CreateProduct(c *gin.Context) {
 	})
 }
 
-// UpdateProduct handles PUT /api/v1/products/:id
+// UpdateProduct godoc
+// @Summary Update product by ID
+// @Description Update a specific product by its ID (admin only)
+// @Tags products
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param id path int true "Product ID"
+// @Param product body object true "Updated product data"
+// @Success 200 {object} map[string]interface{} "Product updated successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request - Invalid input"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Failure 404 {object} map[string]interface{} "Product not found"
+// @Router /products/{id} [put]
 func UpdateProduct(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.ParseUint(idParam, 10, 32)
@@ -193,7 +271,19 @@ func UpdateProduct(c *gin.Context) {
 	})
 }
 
-// DeleteProduct handles DELETE /api/v1/products/:id
+// DeleteProduct godoc
+// @Summary Delete product by ID
+// @Description Delete a specific product by its ID (admin only)
+// @Tags products
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param id path int true "Product ID"
+// @Success 200 {object} map[string]interface{} "Product deleted successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request - Invalid product ID"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Failure 404 {object} map[string]interface{} "Product not found"
+// @Router /products/{id} [delete]
 func DeleteProduct(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.ParseUint(idParam, 10, 32)
