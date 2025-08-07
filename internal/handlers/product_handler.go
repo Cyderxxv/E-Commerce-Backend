@@ -90,6 +90,41 @@ func GetCategories(c *gin.Context) {
 	})
 }
 
+// GetCategoryByID godoc
+// @Summary Get category by ID
+// @Description Get a specific category by its ID
+// @Tags categories
+// @Accept json
+// @Produce json
+// @Param id path int true "Category ID"
+// @Success 200 {object} map[string]interface{} "Category retrieved successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request - Invalid category ID"
+// @Failure 404 {object} map[string]interface{} "Category not found"
+// @Router /categories/{id} [get]
+func GetCategoryByID(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid category ID",
+		})
+		return
+	}
+
+	category, exists := services.GetCategoryByID(uint(id))
+	if !exists {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Category not found",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":    category,
+		"message": "Category retrieved successfully",
+	})
+}
+
 // GetProductsByCategory godoc
 // @Summary Get products by category
 // @Description Get a list of products in a specific category
@@ -304,5 +339,122 @@ func DeleteProduct(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Product deleted successfully",
+	})
+}
+
+// CreateCategory godoc
+// @Summary Create a new category
+// @Description Create a new product category (admin only)
+// @Tags categories
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param category body models.CreateCategoryRequest true "Category creation data"
+// @Success 201 {object} map[string]interface{} "Category created successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request - Invalid input"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Router /categories [post]
+func CreateCategory(c *gin.Context) {
+	var req models.CreateCategoryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	category, err := services.CreateCategory(req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"data":    category,
+		"message": "Category created successfully",
+	})
+}
+
+// UpdateCategory godoc
+// @Summary Update category by ID
+// @Description Update a specific category by its ID (admin only)
+// @Tags categories
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param id path int true "Category ID"
+// @Param category body models.UpdateCategoryRequest true "Updated category data"
+// @Success 200 {object} map[string]interface{} "Category updated successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request - Invalid input"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Failure 404 {object} map[string]interface{} "Category not found"
+// @Router /categories/{id} [put]
+func UpdateCategory(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid category ID",
+		})
+		return
+	}
+
+	var req models.UpdateCategoryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	category, err := services.UpdateCategory(uint(id), req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":    category,
+		"message": "Category updated successfully",
+	})
+}
+
+// DeleteCategory godoc
+// @Summary Delete category by ID
+// @Description Delete a specific category by its ID (admin only)
+// @Tags categories
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param id path int true "Category ID"
+// @Success 200 {object} map[string]interface{} "Category deleted successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request - Invalid category ID"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Failure 404 {object} map[string]interface{} "Category not found"
+// @Router /categories/{id} [delete]
+func DeleteCategory(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid category ID",
+		})
+		return
+	}
+
+	err = services.DeleteCategory(uint(id))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Category deleted successfully",
 	})
 }

@@ -170,6 +170,95 @@ func GetCategoryByID(id uint) (models.Category, bool) {
 	return category, true
 }
 
+// CreateCategory creates a new category
+func CreateCategory(req models.CreateCategoryRequest) (models.Category, error) {
+	// Check if category with same name already exists
+	var existingCategory models.Category
+	if err := configs.DB.Where("name = ?", req.Name).First(&existingCategory).Error; err == nil {
+		return models.Category{}, errors.New("category with this name already exists")
+	}
+
+	// Create new category
+	category := models.Category{
+		Name: req.Name,
+		Icon: req.Icon,
+	}
+
+	if err := configs.DB.Create(&category).Error; err != nil {
+		return models.Category{}, err
+	}
+
+	return category, nil
+}
+
+// UpdateCategory updates an existing category
+func UpdateCategory(id uint, req models.UpdateCategoryRequest) (models.Category, error) {
+	var category models.Category
+
+	// Find the category
+	if err := configs.DB.First(&category, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.Category{}, errors.New("category not found")
+		}
+		return models.Category{}, err
+	}
+
+	// Check if name is being updated and if it already exists
+	if req.Name != "" && req.Name != category.Name {
+		var existingCategory models.Category
+		if err := configs.DB.Where("name = ? AND id != ?", req.Name, id).First(&existingCategory).Error; err == nil {
+			return models.Category{}, errors.New("category with this name already exists")
+		}
+	}
+
+	// Update fields
+	updates := make(map[string]interface{})
+
+	if req.Name != "" {
+		updates["name"] = req.Name
+	}
+	if req.Icon != "" {
+		updates["icon"] = req.Icon
+	}
+
+	// Update the category
+	if err := configs.DB.Model(&category).Updates(updates).Error; err != nil {
+		return models.Category{}, err
+	}
+
+	// Fetch the updated category
+	configs.DB.First(&category, id)
+
+	return category, nil
+}
+
+// DeleteCategory deletes a category by ID
+func DeleteCategory(id uint) error {
+	var category models.Category
+
+	// Find the category
+	if err := configs.DB.First(&category, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("category not found")
+		}
+		return err
+	}
+
+	// Check if there are products using this category
+	var productCount int64
+	configs.DB.Model(&models.Product{}).Where("category_id = ?", id).Count(&productCount)
+	if productCount > 0 {
+		return errors.New("cannot delete category that has products associated with it")
+	}
+
+	// Delete the category
+	if err := configs.DB.Delete(&category).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Helper functions
 
 func categoryExists(id uint) bool {

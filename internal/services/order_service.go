@@ -373,3 +373,130 @@ func (s *OrderService) CreateOrderFromRequest(userID uint, req models.CreateOrde
 
 	return &order, nil
 }
+
+// Admin Order Management Functions
+
+// GetAllOrders returns all orders for admin (with pagination and filtering)
+func GetAllOrders(page, limit int, status string) ([]models.Order, int64, error) {
+	if orderService == nil {
+		InitOrderService()
+	}
+	return orderService.GetAllOrders(page, limit, status)
+}
+
+// GetOrderByIDAdmin returns order by ID for admin (no user restriction)
+func GetOrderByIDAdmin(orderID uint) (*models.Order, error) {
+	if orderService == nil {
+		InitOrderService()
+	}
+	return orderService.GetOrderByIDAdmin(orderID)
+}
+
+// GetOrderStats returns order statistics for admin
+func GetAdminOrderStats() (map[string]interface{}, error) {
+	if orderService == nil {
+		InitOrderService()
+	}
+	return orderService.GetAdminOrderStats()
+}
+
+func (s *OrderService) GetAllOrders(page, limit int, status string) ([]models.Order, int64, error) {
+	var orders []models.Order
+	var total int64
+
+	query := s.db.Model(&models.Order{})
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * limit
+	if err := query.Preload("OrderItems").
+		Preload("OrderItems.Product").
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(limit).
+		Find(&orders).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return orders, total, nil
+}
+
+func (s *OrderService) GetOrderByIDAdmin(orderID uint) (*models.Order, error) {
+	var order models.Order
+	if err := s.db.Where("id = ?", orderID).
+		Preload("OrderItems").
+		Preload("OrderItems.Product").
+		First(&order).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("order not found")
+		}
+		return nil, err
+	}
+
+	return &order, nil
+}
+
+func (s *OrderService) GetAdminOrderStats() (map[string]interface{}, error) {
+	var totalOrders int64
+	var totalRevenue float64
+	var pendingOrders int64
+	var confirmedOrders int64
+	var shippedOrders int64
+	var deliveredOrders int64
+	var cancelledOrders int64
+
+	// Count total orders
+	if err := s.db.Model(&models.Order{}).Count(&totalOrders).Error; err != nil {
+		return nil, err
+	}
+
+	// Calculate total revenue (from delivered orders)
+	if err := s.db.Model(&models.Order{}).
+		Where("status = ?", "DELIVERED").
+		Select("COALESCE(SUM(total_amount), 0)").
+		Scan(&totalRevenue).Error; err != nil {
+		return nil, err
+	}
+
+	// Count orders by status
+	if err := s.db.Model(&models.Order{}).Where("status = ?", "PENDING").Count(&pendingOrders).Error; err != nil {
+		return nil, err
+	}
+	if err := s.db.Model(&models.Order{}).Where("status = ?", "CONFIRMED").Count(&confirmedOrders).Error; err != nil {
+		return nil, err
+	}
+	if err := s.db.Model(&models.Order{}).Where("status = ?", "SHIPPED").Count(&shippedOrders).Error; err != nil {
+		return nil, err
+	}
+	if err := s.db.Model(&models.Order{}).Where("status = ?", "DELIVERED").Count(&deliveredOrders).Error; err != nil {
+		return nil, err
+	}
+	if err := s.db.Model(&models.Order{}).Where("status = ?", "CANCELLED").Count(&cancelledOrders).Error; err != nil {
+		return nil, err
+	}
+
+	// Get orders from last 30 days
+	var recentOrders int64
+	thirtyDaysAgo := time.Now().AddDate(0, 0, -30)
+	if err := s.db.Model(&models.Order{}).
+		Where("created_at >= ?", thirtyDaysAgo).
+		Count(&recentOrders).Error; err != nil {
+		return nil, err
+	}
+
+	return map[string]interface{}{
+		"total_orders":     totalOrders,
+		"total_revenue":    totalRevenue,
+		"pending_orders":   pendingOrders,
+		"confirmed_orders": confirmedOrders,
+		"shipped_orders":   shippedOrders,
+		"delivered_orders": deliveredOrders,
+		"cancelled_orders": cancelledOrders,
+		"recent_orders":    recentOrders,
+	}, nil
+}

@@ -26,6 +26,19 @@ type Category struct {
 	Name      string    `json:"name" binding:"required"`
 	Icon      string    `json:"icon"`
 	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// CreateCategoryRequest represents the request body for creating a category
+type CreateCategoryRequest struct {
+	Name string `json:"name" binding:"required"`
+	Icon string `json:"icon"`
+}
+
+// UpdateCategoryRequest represents the request body for updating a category
+type UpdateCategoryRequest struct {
+	Name string `json:"name,omitempty"`
+	Icon string `json:"icon,omitempty"`
 }
 
 // ProductWithCategory represents product with category information

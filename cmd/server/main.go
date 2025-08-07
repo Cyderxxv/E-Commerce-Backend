@@ -116,6 +116,19 @@ func setupRoutes(router *gin.Engine) {
 			adminManagement.PUT("/products/:id", handlers.UpdateProduct)
 			adminManagement.DELETE("/products/:id", handlers.DeleteProduct)
 
+			// Admin category management
+			adminManagement.GET("/categories", handlers.GetCategories)
+			adminManagement.GET("/categories/:id", handlers.GetCategoryByID)
+			adminManagement.POST("/categories", handlers.CreateCategory)
+			adminManagement.PUT("/categories/:id", handlers.UpdateCategory)
+			adminManagement.DELETE("/categories/:id", handlers.DeleteCategory)
+
+			// Admin order management
+			adminManagement.GET("/orders", handlers.GetAllOrdersAdmin)
+			adminManagement.GET("/orders/stats", handlers.GetAdminOrderStats)
+			adminManagement.GET("/orders/:id", handlers.GetOrderByIDAdmin)
+			adminManagement.PUT("/orders/:id/status", handlers.UpdateOrderStatus)
+
 			// Admin user management
 			adminManagement.GET("/users", handlers.GetUsers)
 			adminManagement.GET("/users/:id", handlers.GetUserByID)
@@ -190,13 +203,6 @@ func setupRoutes(router *gin.Engine) {
 			orders.POST("", handlers.CreateOrder)        // POST /api/v1/orders
 			orders.GET("/stats", handlers.GetOrderStats) // GET /api/v1/orders/stats
 			orders.GET("/:id", handlers.GetOrderByID)    // GET /api/v1/orders/:id
-		}
-
-		// Admin order routes (requires admin authentication)
-		adminOrders := v1.Group("/orders")
-		adminOrders.Use(middleware.AdminAuthMiddleware())
-		{
-			adminOrders.PUT("/:id/status", handlers.UpdateOrderStatus) // PUT /api/v1/orders/:id/status (admin only)
 		}
 
 		// Wishlist routes (requires authentication)

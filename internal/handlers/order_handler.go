@@ -250,3 +250,124 @@ func GetOrderStats(c *gin.Context) {
 		"message": "Order statistics retrieved successfully",
 	})
 }
+
+// Admin Order Management
+
+// GetAllOrdersAdmin godoc
+// @Summary Get all orders (admin)
+// @Description Get a list of all orders with pagination and optional status filtering (admin only)
+// @Tags admin-orders
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param status query string false "Filter by order status (PENDING, CONFIRMED, SHIPPED, DELIVERED, CANCELLED)"
+// @Param page query int false "Page number (default: 1)"
+// @Param limit query int false "Number of orders to return (default: 10)"
+// @Success 200 {object} map[string]interface{} "Success response with orders and pagination"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /admin/orders [get]
+func GetAllOrdersAdmin(c *gin.Context) {
+	// Get query parameters
+	status := c.Query("status")
+	pageStr := c.DefaultQuery("page", "1")
+	limitStr := c.DefaultQuery("limit", "10")
+
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page <= 0 {
+		page = 1
+	}
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 {
+		limit = 10
+	}
+
+	// Get orders
+	orders, total, err := services.GetAllOrders(page, limit, status)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to retrieve orders",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": gin.H{
+			"orders": orders,
+			"pagination": gin.H{
+				"total":       total,
+				"page":        page,
+				"limit":       limit,
+				"total_pages": (total + int64(limit) - 1) / int64(limit),
+			},
+		},
+		"message": "Orders retrieved successfully",
+	})
+}
+
+// GetOrderByIDAdmin godoc
+// @Summary Get order by ID (admin)
+// @Description Get a specific order by ID (admin only)
+// @Tags admin-orders
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param id path int true "Order ID"
+// @Success 200 {object} map[string]interface{} "Success response with order details"
+// @Failure 400 {object} map[string]interface{} "Bad request - Invalid order ID"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Failure 404 {object} map[string]interface{} "Order not found"
+// @Router /admin/orders/{id} [get]
+func GetOrderByIDAdmin(c *gin.Context) {
+	// Get order ID from URL parameter
+	orderIDStr := c.Param("id")
+	orderID, err := strconv.ParseUint(orderIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid order ID",
+		})
+		return
+	}
+
+	// Get order
+	order, err := services.GetOrderByIDAdmin(uint(orderID))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Order not found",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":    order,
+		"message": "Order retrieved successfully",
+	})
+}
+
+// GetAdminOrderStats godoc
+// @Summary Get admin order statistics
+// @Description Get comprehensive order statistics for admin dashboard
+// @Tags admin-orders
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Success 200 {object} map[string]interface{} "Success response with admin order statistics"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /admin/orders/stats [get]
+func GetAdminOrderStats(c *gin.Context) {
+	// Get order statistics
+	stats, err := services.GetAdminOrderStats()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to retrieve order statistics",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":    stats,
+		"message": "Admin order statistics retrieved successfully",
+	})
+}
